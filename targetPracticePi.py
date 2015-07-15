@@ -20,14 +20,20 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	status = "No targets."
 	image = frame.array
 	processed = image.copy()
+	shapeMask = cv2.inRange(image, np.array([0,0,100]), np.array([110,110,255]))
+	cv2.imshow("shapeMask", shapeMask)
 	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-	blurred = cv2.GaussianBlur(gray, (7,7), 0)
+	blurred = cv2.GaussianBlur(shapeMask, (7,7), 0)
 	autoEdged = imutils.autoCanny(blurred)
+
+	
 
 	(cnts, _) = cv2.findContours(autoEdged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 	for c in cnts:
 		peri = cv2.arcLength(c, True)
 		approx = cv2.approxPolyDP(c, 0.01 * peri, True)
+
+		cv2.drawContours(processed, [c], -1, (255,0,0), 2)
 
 		if len(approx) >= 4 and len(approx) <= 6:
 			(x,y,w,h) = cv2.boundingRect(approx)
@@ -40,6 +46,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 			keepSolidity = solidity > 0.9
 			keepAspectRatio = aspectRatio >= 0.8 and aspectRatio <= 1.2
 
+			conditionsString = "dims: " + str(keepDims) + ", solidity: " + str(keepSolidity) + ", aspect: " + str(keepAspectRatio)
+			cv2.putText(processed, conditionsString, (x,y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0), 2)
 			if keepDims and keepSolidity and keepAspectRatio:
 				cv2.drawContours(processed, [approx], -1, (0,0,255), 4)
 				status = "Target(s) acquired."
@@ -55,7 +63,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 
 	cv2.imshow("Raw", image)
 	cv2.imshow("Processed", processed)
-	cv2.imshow("Intermediates", np.hstack([blurred,autoEdged]))
+	#cv2.imshow("Intermediates", np.hstack([blurred,autoEdged]))
 
 	key = cv2.waitKey(1) & 0xFF
 	# clear the stream in preparation for the next frame
